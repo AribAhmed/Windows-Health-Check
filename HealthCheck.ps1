@@ -6,3 +6,11 @@ $uptimeMinutes = $uptime.Minutes
 
 Write-Host "Computer: $computerName
 Uptime: $uptimeDays days, $uptimeHours hours, $uptimeMinutes minutes."
+
+$report = [pscustomobject]@{
+    ComptuterName = $computerName
+    UptimeDays = $uptime.Days
+    UptimeHours = $uptime.Hours
+}
+
+$report
