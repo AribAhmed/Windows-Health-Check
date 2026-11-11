@@ -48,3 +48,15 @@ $report = [pscustomobject]@{ #create custom report object
         Select-Object -ExpandProperty Name ) -join ', ' #expand their property and join them with a comma
     lowDisks = $lowDisks
     }
+
+#creating net array with information
+#get our net ip configuration
+#onl where that object is inside our ipv4 default gateway 
+#select the inteface alias 
+#set custom variables in these columns that are being set to ip address, the gateway next hop, and dns server
+$net = @(Get-NetIPConfiguration | 
+    Where-Object {$_.IPv4DefaultGateway} | 
+    Select-Object InterfaceAlias,
+    @{Name = "IPAddress"; Expression = {$_.IPV4Address.IPAddress}},
+    @{Name = "Gateway"; Expression = {$_.IPV4DefaultGateway.NextHop}},
+    @{Name = "DNSServers"; Expression = {$_.DNSServer.ServerAddresses -join ', '}})
