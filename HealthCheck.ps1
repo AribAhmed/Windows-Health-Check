@@ -13,20 +13,27 @@ $disks = Get-CimInstance Win32_LogicalDisk | #Gather drive information
     Select-Object @{Name = "Name"; Expression = {$_.DeviceID}}, #Select from those objects, grab the device ID and list it under Name
     @{Name = "UsedGB"; Expression = {[math]::Round(($_.Size - $_.FreeSpace) / 1GB, 2)}}, #Grab the Used amount of GB by getting the total size and subtracting how much free space is left
     @{Name = "FreeGB"; Expression = {[math]::Round($_.FreeSpace / 1GB, 2)}}, #the free amount of gb can be taken by getting the automatic variable 
-    @{Name = "PercentFree"; Expression = {[math]::Round(($_.FreeSpace / $_.Size) * 100, 1)}} #Calculate the percentage free by diving the free space by the total size and multiplying by 100|
-        Select-Object *, 
-        @{Name = "Warning"; Expression = {if($_.PercentFree -lt $lowThreshold){ #Gives a warning if percentage is under 25
-            
-            'LOW'
+    @{Name = "PercentFree"; Expression = {[math]::Round(($_.FreeSpace / $_.Size) * 100, 1)}} | #Calculate the percentage free by diving the free space by the total size and multiplying by 100|
+    Select-Object *, 
+    @{Name = "Warning"; Expression = { if ($_.PercentFree -lt $lowThreshold) 
+        { 'LOW' }
 
-        }else{
+        else 
+        { 'OK' } 
+    }} #Warning if percentage is under the threshold
 
-            'OK'
-        }
-        }}
+$low = @($disks | Where-Object {$_.Warning -eq 'LOW'} | Select-Object -ExpandProperty Name) 
+#pull up the disks variable, where the objects in warning subvariable is equal to low, select the object's name (expanded property helps cut the wrapper)
+$lowDisks = if ($low.Count -gt 0){ 
     
+    $low -join ', '
+    
+} else {
 
-
+        'None'
+}
+#if low is greater than 0, join them together with a , else, write one
+    
 $report = [pscustomobject]@{ #create custom report object
     computerName = $computerName #the computer name is listed to the computer name
     uptimeDays = $uptime.Days 
@@ -39,5 +46,5 @@ $report = [pscustomobject]@{ #create custom report object
         Sort-Object Name| #pipe into sorting them by their name alphabetically
         Select-Object -First 5 | #get the first 5
         Select-Object -ExpandProperty Name ) -join ', ' #expand their property and join them with a comma
-    
-}
+    lowDisks = $lowDisks
+    }
