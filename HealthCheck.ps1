@@ -33,7 +33,25 @@ $lowDisks = if ($low.Count -gt 0){
         'None'
 }
 #if low is greater than 0, join them together with a , else, write one
+
+#creating net array with information
+#get our net ip configuration
+#onl where that object is inside our ipv4 default gateway 
+#select the inteface alias 
+#set custom variables in these columns that are being set to ip address, the gateway next hop, and dns server
+$net = @(Get-NetIPConfiguration | 
+    Where-Object {$_.IPv4DefaultGateway} | 
+    Select-Object InterfaceAlias,
+    @{Name = "IPAddress"; Expression = {$_.IPV4Address.IPAddress}},
+    @{Name = "Gateway"; Expression = {$_.IPV4DefaultGateway.NextHop}},
+    @{Name = "DNSServers"; Expression = {($_.DNSServer.ServerAddresses | Select-Object -Unique) -join ', '}})
     
+$gateway = $net[0].Gateway #what's my gateway address
+$gatewayOK = Test-NetConnection $gateway -InformationLevel Quiet #can i connect to my router's gateway address?
+$ipOk = Test-NetConnection 1.1.1.1 -InformationLevel Quiet #can i connect to an internet address 
+$dnsOk = try{ [bool](Resolve-DnsName example.com -ErrorAction stop)} catch {$false} #can i connect to an address based off a website 
+$httpsOk = Test-NetConnection example.com -Port 443 -InformationLevel Quiet #can i create a tcp connection using port 443
+
 $report = [pscustomobject]@{ #create custom report object
     computerName = $computerName #the computer name is listed to the computer name
     uptimeDays = $uptime.Days 
@@ -47,16 +65,9 @@ $report = [pscustomobject]@{ #create custom report object
         Select-Object -First 5 | #get the first 5
         Select-Object -ExpandProperty Name ) -join ', ' #expand their property and join them with a comma
     lowDisks = $lowDisks
+    gatewayReachable = $gatewayOk
+    internetByIp     = $ipOk
+    dnsWorks         = $dnsOk
+    httpsWorks       = $httpsOk
     }
 
-#creating net array with information
-#get our net ip configuration
-#onl where that object is inside our ipv4 default gateway 
-#select the inteface alias 
-#set custom variables in these columns that are being set to ip address, the gateway next hop, and dns server
-$net = @(Get-NetIPConfiguration | 
-    Where-Object {$_.IPv4DefaultGateway} | 
-    Select-Object InterfaceAlias,
-    @{Name = "IPAddress"; Expression = {$_.IPV4Address.IPAddress}},
-    @{Name = "Gateway"; Expression = {$_.IPV4DefaultGateway.NextHop}},
-    @{Name = "DNSServers"; Expression = {$_.DNSServer.ServerAddresses -join ', '}})
